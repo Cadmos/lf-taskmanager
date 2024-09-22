@@ -1,0 +1,17 @@
+{
+  "name": "com.lf.taskmanager",
+  "version": "0.1.0",
+  "displayName": "LF Task Manager - Core",
+  "description": "This package provides a Task Enqueue/Dequeue system for Unity",
+  "author": {
+    "name": "Cadmos"
+  },
+  "unity": "2022.3",
+  "type": "tool",
+  "documentationUrl": "https://wiki.gurbu.com/index.php?title=GPU_Instancer_Pro:GettingStarted",
+  "dependencies": {
+    "com.unity.burst": "1.6.0",
+    "com.unity.collections": "1.2.0",
+	"com.unity.mathematics": "1.2.0"
+  }
+}
