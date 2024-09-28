@@ -1,108 +1,148 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace LF.TaskManager.Runtime
 {
+    public enum TaskQueuePriority
+    {
+        Critical,
+        High,
+        Normal,
+        Low,
+        Lowest
+    }
+
     public class TaskManagerSingleton : MonoBehaviour
     {
+        private Dictionary<TaskQueuePriority, ConcurrentQueue<Func<Task>>> _taskQueues;
         public static TaskManagerSingleton Instance { get; private set; }
+        private bool _isInitialized;
 
-        private Queue<Action> taskQueue = new Queue<Action>();
-        private Queue<(Action task, float executeTime)> delayedTaskQueue = new Queue<(Action, float)>();
-        private bool isShuttingDown = false;
-        private static readonly object lockObj = new object();
-
+        #region Unity Methods
         private void Awake()
         {
-            lock (lockObj)
+            if (Instance != null && Instance != this)
             {
-                if (Instance != null && Instance != this)
-                {
-                    Destroy(gameObject);
-                    return;
-                }
-
-                Instance = this;
-                DontDestroyOnLoad(gameObject);
+                Destroy(gameObject);
+                return;
             }
+
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
         }
 
-        public void AddTask(Action task, Action onComplete = null)
+        private void OnEnable()
         {
-            lock (lockObj)
-            {
-                taskQueue.Enqueue(() =>
-                {
-                    task?.Invoke();
-                    onComplete?.Invoke();
-                });
-            }
+            if (!_isInitialized)
+                _isInitialized = Initialize();
         }
 
-        public void AddDelayedTask(Action task, float delay, Action onComplete = null)
+        private void OnDisable()
         {
-            lock (lockObj)
-            {
-                delayedTaskQueue.Enqueue((() =>
-                {
-                    task?.Invoke();
-                    onComplete?.Invoke();
-                }, Time.time + delay));
-            }
-        }
-
-        private void Update()
-        {
-            // Process delayed tasks
-            while (delayedTaskQueue.Count > 0 && Time.time >= delayedTaskQueue.Peek().executeTime)
-            {
-                var taskPair = delayedTaskQueue.Dequeue();
-                try
-                {
-                    taskPair.task?.Invoke();
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError($"TaskManager: Error executing delayed task: {e.Message}");
-                }
-            }
-
-            // Process immediate tasks
-            if (taskQueue.Count > 0)
-            {
-                Action task = taskQueue.Dequeue();
-                try
-                {
-                    task?.Invoke();
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError($"TaskManager: Error executing task: {e.Message}");
-                }
-            }
-        }
-
-        public void CancelAllTasks()
-        {
-            lock (lockObj)
-            {
-                taskQueue.Clear();
-                delayedTaskQueue.Clear();
-                Debug.Log("TaskManager: All tasks have been canceled.");
-            }
-        }
-
-        private void OnApplicationQuit()
-        {
-            isShuttingDown = true;
+            ClearAllQueues();
         }
 
         private void OnDestroy()
         {
-            if (!isShuttingDown)
+            ClearAllQueues();
+        }
+
+        #endregion
+
+        private bool Initialize()
+        {
+            _taskQueues = new Dictionary<TaskQueuePriority, ConcurrentQueue<Func<Task>>>();
+
+            foreach (TaskQueuePriority priority in Enum.GetValues(typeof(TaskQueuePriority)))
             {
-                Instance = null;
+                _taskQueues.Add(priority, new ConcurrentQueue<Func<Task>>());
+            }
+
+            StartProcessingTasks();
+            return true;
+        }
+
+        private void StartProcessingTasks()
+        {
+            Task.Factory.StartNew(ProcessTasksByPriority, TaskCreationOptions.LongRunning);
+        }
+
+        private void ClearAllQueues()
+        {
+            foreach (var queue in _taskQueues.Values)
+            {
+                queue.Clear();
+            }
+        }
+        public void CancelAllTasks()
+        {
+            ClearAllQueues();
+        }
+
+        public async Task EnqueueTask(Func<Task> taskFunc, TaskQueuePriority priority)
+        {
+            if (!_taskQueues.ContainsKey(priority))
+            {
+                Debug.LogError($"Task queue does not exist for priority: {priority}");
+                return;
+            }
+
+            var tcs = new TaskCompletionSource<bool>();
+            
+            _taskQueues[priority].Enqueue(async () =>
+            {
+                try
+                {
+                    await taskFunc();
+                    tcs.SetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"Task execution failed in {priority} queue: {ex.Message}");
+                    tcs.SetException(ex);
+                }
+            });
+
+            await tcs.Task;
+        }
+
+        private async Task ProcessTasksByPriority()
+        {
+            await Awaitable.BackgroundThreadAsync();
+
+            while (!destroyCancellationToken.IsCancellationRequested)
+            {
+                bool taskProcessed = false;
+
+                foreach (TaskQueuePriority priority in Enum.GetValues(typeof(TaskQueuePriority)))
+                {
+                    if (_taskQueues[priority].TryDequeue(out var taskToRun))
+                    {
+                        Debug.Log($"Processing task from {priority} queue.");
+
+                        try
+                        {
+                            await taskToRun();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogError($"Error processing task in {priority} queue: {ex.Message}");
+                        }
+                        
+                        Debug.Log($"Finished processing task from {priority} queue.");
+                        
+                        taskProcessed = true;
+                        break;
+                    }
+                }
+
+                if (!taskProcessed)
+                {
+                    await Awaitable.NextFrameAsync();
+                }
             }
         }
     }

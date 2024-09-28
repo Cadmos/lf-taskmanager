@@ -15,7 +15,7 @@ namespace LF.TaskManager.Editor
         public static void AddTaskManager()
         {
             // Check if a TaskManagerSingleton already exists in the scene
-            TaskManagerSingleton existingTaskManager = Object.FindObjectOfType<TaskManagerSingleton>();
+            TaskManagerSingleton existingTaskManager = Object.FindFirstObjectByType<TaskManagerSingleton>();
 
             if (existingTaskManager != null)
             {
