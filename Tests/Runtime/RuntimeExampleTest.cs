@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using LF.TaskManager.Runtime;
 using System.Collections;
+using System.Threading.Tasks;
 
 namespace LF.TaskManager.Tests
 {
@@ -21,7 +22,6 @@ namespace LF.TaskManager.Tests
             }
         }
 
-
         [TearDown]
         public void Teardown()
         {
@@ -38,10 +38,11 @@ namespace LF.TaskManager.Tests
             bool taskExecuted = false;
 
             // Add a simple task that sets taskExecuted to true
-            TaskManagerSingleton.Instance.AddTask(() =>
+            TaskManagerSingleton.Instance.EnqueueTask(async () =>
             {
                 taskExecuted = true;
-            });
+                await Task.CompletedTask;
+            }, TaskQueuePriority.Normal);
 
             // Wait for one frame to allow the task to be processed
             yield return null;
@@ -56,10 +57,11 @@ namespace LF.TaskManager.Tests
             bool delayedTaskExecuted = false;
 
             // Add a delayed task that sets delayedTaskExecuted to true after 2 seconds
-            TaskManagerSingleton.Instance.AddDelayedTask(() =>
+            TaskManagerSingleton.Instance.EnqueueTask(async () =>
             {
+                await Task.Delay(2000);
                 delayedTaskExecuted = true;
-            }, 2f);
+            }, TaskQueuePriority.Normal);
 
             // Wait for 1 second (task should not have executed yet)
             yield return new WaitForSeconds(1f);
@@ -76,10 +78,11 @@ namespace LF.TaskManager.Tests
             bool taskExecuted = false;
 
             // Add a task that should be canceled
-            TaskManagerSingleton.Instance.AddTask(() =>
+            TaskManagerSingleton.Instance.EnqueueTask(async () =>
             {
                 taskExecuted = true;
-            });
+                await Task.CompletedTask;
+            }, TaskQueuePriority.Normal);
 
             // Cancel all tasks before they are executed
             TaskManagerSingleton.Instance.CancelAllTasks();
@@ -97,9 +100,21 @@ namespace LF.TaskManager.Tests
             int taskExecutionCount = 0;
 
             // Add multiple tasks
-            TaskManagerSingleton.Instance.AddTask(() => taskExecutionCount++);
-            TaskManagerSingleton.Instance.AddTask(() => taskExecutionCount++);
-            TaskManagerSingleton.Instance.AddTask(() => taskExecutionCount++);
+            TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            {
+                taskExecutionCount++;
+                await Task.CompletedTask;
+            }, TaskQueuePriority.Normal);
+            TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            {
+                taskExecutionCount++;
+                await Task.CompletedTask;
+            }, TaskQueuePriority.Normal);
+            TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            {
+                taskExecutionCount++;
+                await Task.CompletedTask;
+            }, TaskQueuePriority.Normal);
 
             // Wait for one frame to allow the tasks to be processed
             yield return null;
