@@ -1,27 +1,33 @@
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
 namespace LF.TaskManager.Runtime
 {
-    public enum TaskQueuePriority
+    public enum TaskQueuePriority : int
     {
-        Critical,
-        High,
-        Normal,
-        Low,
-        Lowest
+        Critical = 0,
+        High = 1,
+        Normal = 2,
+        Low = 3,
+        Lowest = 4
     }
 
     public class TaskManagerSingleton : MonoBehaviour
     {
-        private Dictionary<TaskQueuePriority, ConcurrentQueue<Func<Task>>> _taskQueues;
+        private ConcurrentQueue<Func<Task>>[] _taskQueues;
+        private int _priorityLevels;
+        private int _workerCount;
+        private CancellationTokenSource _cancellationTokenSource;
+        private CancellationToken _cancellationToken;
+
         public static TaskManagerSingleton Instance { get; private set; }
         private bool _isInitialized;
 
         #region Unity Methods
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -40,13 +46,9 @@ namespace LF.TaskManager.Runtime
                 _isInitialized = Initialize();
         }
 
-        private void OnDisable()
-        {
-            ClearAllQueues();
-        }
-
         private void OnDestroy()
         {
+            _cancellationTokenSource?.Cancel();
             ClearAllQueues();
         }
 
@@ -54,12 +56,19 @@ namespace LF.TaskManager.Runtime
 
         private bool Initialize()
         {
-            _taskQueues = new Dictionary<TaskQueuePriority, ConcurrentQueue<Func<Task>>>();
+            _cancellationTokenSource = new CancellationTokenSource();
+            _cancellationToken = _cancellationTokenSource.Token;
 
-            foreach (TaskQueuePriority priority in Enum.GetValues(typeof(TaskQueuePriority)))
+            _priorityLevels = Enum.GetValues(typeof(TaskQueuePriority)).Length;
+            _taskQueues = new ConcurrentQueue<Func<Task>>[_priorityLevels];
+
+            for (int i = 0; i < _priorityLevels; i++)
             {
-                _taskQueues.Add(priority, new ConcurrentQueue<Func<Task>>());
+                _taskQueues[i] = new ConcurrentQueue<Func<Task>>();
             }
+
+            // Set the number of worker tasks; adjust as needed
+            _workerCount = Environment.ProcessorCount;
 
             StartProcessingTasks();
             return true;
@@ -67,32 +76,36 @@ namespace LF.TaskManager.Runtime
 
         private void StartProcessingTasks()
         {
-            Task.Factory.StartNew(ProcessTasksByPriority, TaskCreationOptions.LongRunning);
+            for (int i = 0; i < _workerCount; i++)
+            {
+                Task.Factory.StartNew(ProcessTasksAsync, _cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            }
         }
 
         private void ClearAllQueues()
         {
-            foreach (var queue in _taskQueues.Values)
+            foreach (var queue in _taskQueues)
             {
-                queue.Clear();
+                while (queue.TryDequeue(out _)) { }
             }
         }
+
         public void CancelAllTasks()
         {
             ClearAllQueues();
         }
 
-        public async Task EnqueueTask(Func<Task> taskFunc, TaskQueuePriority priority)
+        /// <summary>
+        /// Enqueues a task to be processed with the specified priority.
+        /// </summary>
+        /// <param name="taskFunc">The asynchronous function representing the task.</param>
+        /// <param name="priority">The priority level of the task.</param>
+        /// <returns>A Task that completes when the enqueued task has been processed.</returns>
+        public Task EnqueueTask(Func<Task> taskFunc, TaskQueuePriority priority)
         {
-            if (!_taskQueues.ContainsKey(priority))
-            {
-                Debug.LogError($"Task queue does not exist for priority: {priority}");
-                return;
-            }
-
             var tcs = new TaskCompletionSource<bool>();
-            
-            _taskQueues[priority].Enqueue(async () =>
+
+            _taskQueues[(int)priority].Enqueue(async () =>
             {
                 try
                 {
@@ -106,42 +119,49 @@ namespace LF.TaskManager.Runtime
                 }
             });
 
-            await tcs.Task;
+            return tcs.Task;
         }
 
-        private async Task ProcessTasksByPriority()
+        private async Task ProcessTasksAsync()
         {
             await Awaitable.BackgroundThreadAsync();
 
-            while (!destroyCancellationToken.IsCancellationRequested)
+            int idleDelay = 1000; // Start with a 1-second delay
+            int maxIdleDelay = 5000; // Maximum delay of 5 seconds
+            int delayIncrement = 1000; // Increment delay by 1 second each time
+
+            while (!_cancellationToken.IsCancellationRequested)
             {
                 bool taskProcessed = false;
 
-                foreach (TaskQueuePriority priority in Enum.GetValues(typeof(TaskQueuePriority)))
+                // Check queues starting from highest priority
+                for (int i = 0; i < _priorityLevels; i++)
                 {
-                    if (_taskQueues[priority].TryDequeue(out var taskToRun))
+                    if (_taskQueues[i].TryDequeue(out var taskToRun))
                     {
-                        Debug.Log($"Processing task from {priority} queue.");
-
                         try
                         {
                             await taskToRun();
                         }
                         catch (Exception ex)
                         {
-                            Debug.LogError($"Error processing task in {priority} queue: {ex.Message}");
+                            Debug.LogError($"Error processing task in priority {i}: {ex.Message}");
                         }
-                        
-                        Debug.Log($"Finished processing task from {priority} queue.");
-                        
+
                         taskProcessed = true;
+                        // Reset idle delay after processing a task
+                        idleDelay = 1000; // Reset to initial delay
                         break;
                     }
                 }
 
                 if (!taskProcessed)
                 {
-                    await Awaitable.NextFrameAsync();
+                    // Wait for the current idle delay
+                    await Task.Delay(idleDelay);
+
+                    // Increase the idle delay for next time, up to the maximum
+                    idleDelay = Math.Min(idleDelay + delayIncrement, maxIdleDelay);
                 }
             }
         }
