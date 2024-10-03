@@ -18,13 +18,13 @@ namespace LF.TaskManager.Runtime
     public class TaskManagerSingleton : MonoBehaviour
     {
         private ConcurrentQueue<Func<Task>>[] _taskQueues;
-        private int _priorityLevels;
-        private int _workerCount;
+        [SerializeField] private int _priorityLevels;
+        [SerializeField] private int _workerCount;
         private CancellationTokenSource _cancellationTokenSource;
         private CancellationToken _cancellationToken;
 
         public static TaskManagerSingleton Instance { get; private set; }
-        private bool _isInitialized;
+        [SerializeField] private bool _isInitialized;
 
         #region Unity Methods
 
@@ -124,13 +124,11 @@ namespace LF.TaskManager.Runtime
 
         private async Task ProcessTasksAsync()
         {
-            await Awaitable.BackgroundThreadAsync();
-
             int idleDelay = 1000; // Start with a 1-second delay
             int maxIdleDelay = 5000; // Maximum delay of 5 seconds
             int delayIncrement = 1000; // Increment delay by 1 second each time
 
-            while (!_cancellationToken.IsCancellationRequested)
+            while (!_cancellationToken.IsCancellationRequested || destroyCancellationToken.IsCancellationRequested)
             {
                 bool taskProcessed = false;
 
