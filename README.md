@@ -5,8 +5,6 @@ This is a task manager for Little Fishers game. It is used to manage C# Tasks, q
 ---------------------------------
 DOCUMENTATION
 ---------------------------------
-Please read our online documentation for more in-depth explanations and customization options at:
-
 ---------------------------------
 SETUP
 ---------------------------------
