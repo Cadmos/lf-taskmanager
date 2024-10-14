@@ -10,12 +10,8 @@ Please read our online documentation for more in-depth explanations and customiz
 ---------------------------------
 SETUP
 ---------------------------------
-1. Add the desired Managers to your scene
-
-1.1. Add Manager
+1. Add Manager
 Tools -> LF Task Manager -> Add ...
-
-2. In the Inspector window, press the "?" button at the top-right corner to get detailed information about setting up the manager.
 
 ---------------------------------
 SUPPORT

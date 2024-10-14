@@ -7,8 +7,8 @@
     "name": "Cadmos"
   },
   "unity": "2022.3",
-  "type": "tool",
-  "documentationUrl": "https://wiki.gurbu.com/index.php?title=GPU_Instancer_Pro:GettingStarted",
+  "type": "library",
+  "documentationUrl": "",
   "dependencies": {
     "com.unity.burst": "1.6.0",
     "com.unity.collections": "1.2.0",
