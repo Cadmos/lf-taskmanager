@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
+using LF.ManagerCore.Runtime;
 using UnityEngine;
 
 namespace LF.TaskManager.Runtime
@@ -15,7 +16,7 @@ namespace LF.TaskManager.Runtime
         Lowest = 4
     }
 
-    public class TaskManagerSingleton : MonoBehaviour
+    public class TaskManagerSingleton : ManagerBase
     {
         private ConcurrentQueue<Func<Task>>[] _taskQueues;
         [SerializeField] private int _priorityLevels;

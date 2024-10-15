@@ -4,6 +4,7 @@ using UnityEngine.TestTools;
 using LF.TaskManager.Runtime;
 using System.Collections;
 using System.Threading.Tasks;
+using LF.ManagerCore.Runtime;
 
 namespace LF.TaskManager.Tests
 {
@@ -13,7 +14,7 @@ namespace LF.TaskManager.Tests
         public void Setup()
         {
             // Ensure the TaskManagerSingleton instance is created before each test
-            if (TaskManagerSingleton.Instance == null)
+            if (ManagerBase.GetInstance<TaskManagerSingleton>() == null)
             {
                 // Manually create the GameObject if no instance exists
                 var taskManagerGO = new GameObject("TaskManagerSingleton");
@@ -26,7 +27,7 @@ namespace LF.TaskManager.Tests
         public void Teardown()
         {
             // Clean up after each test
-            if (TaskManagerSingleton.Instance != null)
+            if (ManagerBase.GetInstance<TaskManagerSingleton>() != null)
             {
                 Object.DestroyImmediate(TaskManagerSingleton.Instance.gameObject);
             }
@@ -38,7 +39,7 @@ namespace LF.TaskManager.Tests
             bool taskExecuted = false;
 
             // Add a simple task that sets taskExecuted to true
-            TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            ManagerBase.GetInstance<TaskManagerSingleton>().EnqueueTask(async () =>
             {
                 taskExecuted = true;
                 await Task.CompletedTask;
@@ -57,7 +58,7 @@ namespace LF.TaskManager.Tests
             bool delayedTaskExecuted = false;
 
             // Add a delayed task that sets delayedTaskExecuted to true after 2 seconds
-            TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            ManagerBase.GetInstance<TaskManagerSingleton>().EnqueueTask(async () =>
             {
                 await Task.Delay(2000);
                 delayedTaskExecuted = true;
@@ -78,14 +79,14 @@ namespace LF.TaskManager.Tests
             bool taskExecuted = false;
 
             // Add a task that should be canceled
-            TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            ManagerBase.GetInstance<TaskManagerSingleton>().EnqueueTask(async () =>
             {
                 taskExecuted = true;
                 await Task.CompletedTask;
             }, TaskQueuePriority.Normal);
 
             // Cancel all tasks before they are executed
-            TaskManagerSingleton.Instance.CancelAllTasks();
+            ManagerBase.GetInstance<TaskManagerSingleton>().CancelAllTasks();
 
             // Wait for one frame to allow the task to be processed (but it should have been canceled)
             yield return null;
@@ -100,17 +101,17 @@ namespace LF.TaskManager.Tests
             int taskExecutionCount = 0;
 
             // Add multiple tasks
-            TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            ManagerBase.GetInstance<TaskManagerSingleton>().EnqueueTask(async () =>
             {
                 taskExecutionCount++;
                 await Task.CompletedTask;
             }, TaskQueuePriority.Normal);
-            TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            ManagerBase.GetInstance<TaskManagerSingleton>().EnqueueTask(async () =>
             {
                 taskExecutionCount++;
                 await Task.CompletedTask;
             }, TaskQueuePriority.Normal);
-            TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            ManagerBase.GetInstance<TaskManagerSingleton>().EnqueueTask(async () =>
             {
                 taskExecutionCount++;
                 await Task.CompletedTask;

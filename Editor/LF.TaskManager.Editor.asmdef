@@ -3,7 +3,8 @@
     "rootNamespace": "LF.TaskManager.Editor",
     "references": [
         "GUID:63798d18f0e3fba49af61f917db5d138",
-        "GUID:2191fa2c194d25543975fd35aa0cc8a6"
+        "GUID:2191fa2c194d25543975fd35aa0cc8a6",
+        "GUID:b95d806bcf6f1b54db1a9bc0d5151df1"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

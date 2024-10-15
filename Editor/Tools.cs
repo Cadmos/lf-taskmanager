@@ -1,4 +1,6 @@
-﻿using UnityEditor;
+﻿using Codice.Client.Common;
+using LF.ManagerCore.Runtime;
+using UnityEditor;
 using UnityEngine;
 using LF.TaskManager.Runtime; // Ensure this namespace is correctly referenced
 
@@ -15,7 +17,7 @@ namespace LF.TaskManager.Editor
         public static void AddTaskManager()
         {
             // Check if a TaskManagerSingleton already exists in the scene
-            TaskManagerSingleton existingTaskManager = Object.FindFirstObjectByType<TaskManagerSingleton>();
+            TaskManagerSingleton existingTaskManager = ManagerBase.GetInstance<TaskManagerSingleton>();
 
             if (existingTaskManager != null)
             {

@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using LF.ManagerCore.Runtime;
 using LF.TaskManager.Runtime;
 using UnityEngine;
 
@@ -14,7 +15,7 @@ namespace LF.TaskManager.Samples
         public async Task Task1()
         {
             task1State = TaskState.Running;
-            await TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            await ManagerBase.GetInstance<TaskManagerSingleton>().EnqueueTask(async () =>
             {
                 await Task.Delay(1000);
                 Debug.Log("Task 1 completed after 1 second.");
@@ -25,7 +26,7 @@ namespace LF.TaskManager.Samples
         public async Task Task2()
         {
             task2State = TaskState.Running;
-            await TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            await ManagerBase.GetInstance<TaskManagerSingleton>().EnqueueTask(async () =>
             {
                 await Task.Delay(2000);
                 Debug.Log("Task 2 completed after 2 seconds.");
@@ -36,7 +37,7 @@ namespace LF.TaskManager.Samples
         public async Task TaskWithPriority(TaskQueuePriority priority, int delayInMilliseconds)
         {
             taskPriorityState = TaskState.Running;
-            await TaskManagerSingleton.Instance.EnqueueTask(async () =>
+            await ManagerBase.GetInstance<TaskManagerSingleton>().EnqueueTask(async () =>
             {
                 await Task.Delay(delayInMilliseconds);
                 Debug.Log($"Task with {priority} priority completed after {delayInMilliseconds} ms.");
