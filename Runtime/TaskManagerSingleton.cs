@@ -28,26 +28,19 @@ namespace LF.TaskManager.Runtime
         [SerializeField] private bool _isInitialized;
 
         #region Unity Methods
-
-        private void Awake()
-        {
-            if (Instance != null && Instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-
-        private void OnEnable()
+        public override void StartManager()
         {
             if (!_isInitialized)
                 _isInitialized = Initialize();
         }
 
-        private void OnDestroy()
+        public override void OnEnableManager()
+        {
+            if (!_isInitialized)
+                _isInitialized = Initialize();
+        }
+
+        public override void OnDestroyManager()
         {
             _cancellationTokenSource?.Cancel();
             ClearAllQueues();
